@@ -6,7 +6,7 @@ Date: 2024-11-09
 
 import sqlite3
 from dbcm import DBCM
-from weather_scraper import WeatherScraper
+from scrape_weather import WeatherScraper
 
 class DBOperations:
     def __init__(self, db_name="weather_data.db"):
