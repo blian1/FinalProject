@@ -1,4 +1,11 @@
+"""
+Group No: 05
+Group Memners: Boyuan Lian, Maninderjit Singh, Henil Patel
+Date: 2024-11-17
+"""
+
 # scrape_weather.py
+
 from html.parser import HTMLParser
 import requests
 from datetime import datetime
@@ -6,6 +13,7 @@ import time
 import re
 
 class WeatherScraper(HTMLParser):
+    """WeatherScraper class"""
     def __init__(self, base_url):
         super().__init__()
         self.base_url = base_url
@@ -16,10 +24,12 @@ class WeatherScraper(HTMLParser):
         self.collect_data = False
 
     def handle_starttag(self, tag, attrs):
+        """Handle start tag of HTML element"""
         if tag == "td" or tag == "th":
             self.collect_data = True
 
     def handle_data(self, data):
+        """Handle data within HTML tag"""
         if self.collect_data:
             data = data.strip()
             if data:
@@ -27,6 +37,7 @@ class WeatherScraper(HTMLParser):
             self.collect_data = False
 
     def handle_endtag(self, tag):
+        """Handle end tag of HTML element"""
         if tag == "tr" and len(self.current_row) >= 4:
             if "Sum" not in self.current_row and "Avg" not in self.current_row and "Xtrm" not in self.current_row:
                 try:
@@ -46,12 +57,13 @@ class WeatherScraper(HTMLParser):
             self.current_row = []
 
     def scrape_weather(self):
+        """Scrape data from the webpage for specific time duration"""
         today = datetime.now()
         #self.year = today.year
         #self.month = today.month
 
-        self.year = 1996 ############# Here is a test use 1996-12 as begin date , get all data please use self.year = today.year,#self.month = today.month
-        self.month = 12 ############
+        self.year = today.year ############# Here is a test use 1996-12 as begin date , get all data please use self.year = today.year,#self.month = today.month
+        self.month = today.month ############
 
         while True:
             print(f"Scraping data for {self.year}-{self.month:02d}...")
@@ -87,7 +99,7 @@ class WeatherScraper(HTMLParser):
             else:
                 self.month -= 1
 
-            if self.year < 1840:
+            if self.year < 2000:  #Modify year accroding to requiremet
                 print("Reached the earliest available year. Stopping.")
                 break
 
@@ -95,6 +107,7 @@ class WeatherScraper(HTMLParser):
 
 
 if __name__ == "__main__":
+    """Execute operatios to scrape data and display it."""
     base_url = "http://climate.weather.gc.ca/climate_data/daily_data_e.html?StationID=27174&timeframe=2&Day=1"
     scraper = WeatherScraper(base_url)
     weather_data = scraper.scrape_weather()
