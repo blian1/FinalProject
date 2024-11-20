@@ -57,11 +57,16 @@ class WeatherScraper(HTMLParser):
             self.current_row = []
 
     def scrape_weather(self, start_date=None, end_date=None):
-        """Scrape data for a specific date range."""
+        """
+        Scrape data for a specific date range.
+        If no start_date is provided, start from the current month and scrape backwards
+        until a mismatch in the webpage title indicates no data is available.
+        """
         today = datetime.now()
         self.year = today.year
         self.month = today.month
 
+        # Adjust start date if provided
         if start_date:
             self.year = start_date.year
             self.month = start_date.month
@@ -74,6 +79,17 @@ class WeatherScraper(HTMLParser):
                 try:
                     response = requests.get(url, timeout=10)
                     response.raise_for_status()
+
+                    # Check if the title matches the expected report date
+                    title_match = re.search(r'<h1 property="name" id="wb-cont">Daily Data Report for (.*?)</h1>', response.text)
+                    if title_match:
+                        report_date = title_match.group(1).strip()
+                        expected_title = f"{datetime(self.year, self.month, 1):%B %Y}"
+                        if expected_title not in report_date:
+                            print(f"No data available for {self.year}-{self.month:02d}. Stopping.")
+                            return self.weather_data
+
+                    # Process the page content
                     self.feed(response.text)
                     print(f"Data successfully retrieved for {self.year}-{self.month:02d}.")
                     break
@@ -81,8 +97,9 @@ class WeatherScraper(HTMLParser):
                     print(f"Attempt {attempt + 1} failed: {e}")
                     time.sleep(5)
 
-            # Stop if the current date matches the end_date
-            if end_date and datetime(self.year, self.month, 1).date() > end_date:
+            # Check if the scraping should stop based on end_date
+            current_date = datetime(self.year, self.month, 1).date()
+            if end_date and current_date > end_date:
                 print("Reached the end date. Stopping.")
                 break
 
@@ -92,10 +109,6 @@ class WeatherScraper(HTMLParser):
                 self.year -= 1
             else:
                 self.month -= 1
-
-            if self.year < 2000:
-                print("Reached the earliest available year. Stopping.")
-                break
 
         return self.weather_data
 
