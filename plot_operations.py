@@ -1,12 +1,9 @@
 """
 Group No: 05
 Group Memners: Boyuan Lian, Maninderjit Singh, Henil Patel
-Date: 2024-11-09
+Date: 2024-11-23
 """
-
-import sqlite3
 import matplotlib.pyplot as plt
-from collections import defaultdict
 from dbcm import DBCM
 
 def plot_boxplot(weather_data, start_year, end_year):
@@ -30,40 +27,41 @@ def plot_boxplot(weather_data, start_year, end_year):
 
 
 def plot_lineplot(weather_data, year, month):
-   """ Plots a line plot for the mean daily temperatures of a specific month and year. """
-   daily_temps = []
-   days = []
+    """ Plots a line plot for the mean daily temperatures of a specific month and year. """
+    daily_temps = []
+    days = []
 
-   for given_year in weather_data:
-       if given_year == year:
-           if month in weather_data[given_year]:
-               for day in range(1, len(weather_data[year][month]) + 1):
-                   formatted_date = f"{year}-{month:02d}-{day:02d}"
-                   days.append(formatted_date)
-                   daily_temps.append(weather_data[year][month][day-1])
+    if year in weather_data and month in weather_data[year]:
+        for day in range(1, len(weather_data[year][month]) + 1):
+            formatted_date = f"{year}-{month:02d}-{day:02d}"
+            days.append(formatted_date)
+            daily_temps.append(weather_data[year][month][day - 1])
 
-   plt.plot(days, daily_temps, 'b-')
-   plt.grid(True, color='grey', linestyle='-')
-   plt.xlabel("Date")
-   plt.ylabel("Avg Daily Temperature")
-   plt.title("Daily Avg Temperatures")
-   plt.xticks(rotation=45)
-   plt.show()
+    plt.plot(days, daily_temps, 'b-')
+    plt.grid(True, color='grey', linestyle='-')
+    plt.xlabel("Date")
+    plt.ylabel("Avg Daily Temperature")
+    plt.title("Daily Avg Temperatures")
+    plt.xticks(rotation=45)
+    plt.show()
 
 
 if __name__ == "__main__":
     with DBCM("weather_data.db") as cursor:
-      cursor.execute("SELECT  sample_date,  avg_temp FROM weather;")
-      rows =  cursor.fetchall()
+        cursor.execute("SELECT sample_date, avg_temp FROM weather;")
+        rows = cursor.fetchall()
 
-    weather_data = defaultdict(lambda: defaultdict(list))
+    weather_data = {}
     for sample_date, avg_temp in rows:
         try:
-          year, month, day = map(int, sample_date.split('-'))
-          weather_data[year][month].append(float(avg_temp))
+            year, month, day = map(int, sample_date.split('-'))
+            if year not in weather_data:
+                weather_data[year] = {}
+            if month not in weather_data[year]:
+                weather_data[year][month] = []
+            weather_data[year][month].append(float(avg_temp))
         except (ValueError, TypeError):
-                    continue
+            continue
 
     plot_boxplot(weather_data, 2000, 2017)
-
     plot_lineplot(weather_data, 2020, 3)
