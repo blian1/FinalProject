@@ -30,6 +30,7 @@ class WeatherProcessor:
 
     def download_full_data(self):
       """Download full weather data and export it as an Excel file."""
+
       try:
           # Fetch all data from the database
           data = self.db.fetch_data()
@@ -40,6 +41,8 @@ class WeatherProcessor:
           else:
               print("Database is empty. Scraping full weather data...")
               # Scrape data if the database is empty
+              start_Date = datetime(2024, 1, 1)
+              end_Date = datetime(2024, 12, 31)
               weather_data = self.scraper.scrape_weather()
               formatted_data = [
                   (date, "Winnipeg", temps["Max"], temps["Min"], temps["Mean"])
@@ -60,7 +63,10 @@ class WeatherProcessor:
 
 
     def update_data(self):
-        """Check and update weather data in the database."""
+        """
+        Check the database for the latest weather data and update it with new entries
+        if data for recent dates is missing.
+        """
         try:
             print("Checking and updating weather data in the database...")
             self.db.initialize_db()
@@ -68,35 +74,49 @@ class WeatherProcessor:
             # Fetch the latest date from the database
             latest_date = self.db.fetch_latest_date()
             today = datetime.now().date()
-            yesterday = today - timedelta(days=1)
 
+            # Ensure latest_date is a datetime.date object
             if latest_date:
-                latest_date_obj = datetime.strptime(latest_date, "%Y-%m-%d").date()
-                print(f"The latest data in the database is from: {latest_date_obj}")
-
-                # If the latest date in the database is yesterday, no update is needed
-                if latest_date_obj >= yesterday:
+                if isinstance(latest_date, str):
+                    latest_date = datetime.strptime(latest_date, "%Y-%m-%d").date()
+                if latest_date >= today - timedelta(days=1):
                     print("Database is already up to date. No update required.")
                     return
+                # Set start_date to the day after the latest date in the database
+                start_date = latest_date + timedelta(days=1)
             else:
                 print("Database is empty. Starting from the earliest available data.")
-                latest_date_obj = None
+                start_date = today  # Start from today if the database is empty
 
-            # Fetch new data from the day after the latest date to today
-            start_date = latest_date_obj + timedelta(days=1) if latest_date_obj else None
-            print(f"Fetching data from {start_date} to {today}...")
+            # Fetch new weather data from start_date to today
+            new_weather_data = self.scraper.update_weather_data(start_date=start_date, end_date=today)
 
-            new_weather_data = self.scraper.scrape_weather(start_date=start_date, end_date=today)
-            formatted_data = [
-                (date, "Winnipeg", temps["Max"], temps["Min"], temps["Mean"])
-                for date, temps in new_weather_data.items()
-            ]
+            # Ensure all keys in new_weather_data are converted to datetime.date
+            formatted_data = []
+            for date, temps in new_weather_data.items():
+                if isinstance(date, str):
+                    date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+                elif isinstance(date, datetime):
+                    date_obj = date.date()
+                else:
+                    date_obj = date  # Assume already datetime.date
 
-            # Append new data to the database
+                formatted_data.append(
+                    (date_obj.strftime("%Y-%m-%d"), "Winnipeg", temps["Max"], temps["Min"], temps["Mean"])
+                )
+
+            # Save the new data to the database
             self.db.save_data(formatted_data)
             print("Database updated successfully!")
         except Exception as e:
             print(f"An error occurred while updating data: {e}")
+
+
+
+
+
+
+
 
 
     def generate_boxplot(self):

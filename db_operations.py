@@ -7,6 +7,7 @@ Date: 2024-11-09
 import sqlite3
 from dbcm import DBCM
 from scrape_weather import WeatherScraper
+from datetime import datetime, timedelta
 
 class DBOperations:
     def __init__(self, db_name="weather_data.db"):
@@ -31,16 +32,28 @@ class DBOperations:
 
     def save_data(self, data):
         """Save weather data entries to the Database."""
-        self.purge_data()
-
         with DBCM(self.db_name) as cursor:
             try:
+
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS weather (
+                        sample_date TEXT NOT NULL,
+                        location TEXT NOT NULL,
+                        max_temp REAL,
+                        min_temp REAL,
+                        avg_temp REAL,
+                        PRIMARY KEY (sample_date, location)
+                    );
+                """)
+
                 cursor.executemany("""
-                    INSERT INTO weather (sample_date, location, max_temp, min_temp,  avg_temp)
+                    INSERT OR IGNORE INTO weather (sample_date, location, max_temp, min_temp, avg_temp)
                     VALUES (?, ?, ?, ?, ?);
                 """, data)
+
             except sqlite3.Error as e:
                 print(f"Error saving data: {e}")
+
 
     def fetch_data(self):
         """Fetch all weather data from the database."""
@@ -67,10 +80,14 @@ class DBOperations:
             try:
                 cursor.execute("SELECT MAX(sample_date) FROM weather;")
                 result = cursor.fetchone()
-                return result[0] if result and result[0] else None
+                if result and result[0]:  # Ensure result is not None
+                    # Convert the string to datetime.date
+                    return datetime.strptime(result[0], "%Y-%m-%d").date()
+                return None
             except sqlite3.Error as e:
                 print(f"Error fetching latest date: {e}")
                 return None
+
 
 
 

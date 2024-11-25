@@ -112,6 +112,67 @@ class WeatherScraper(HTMLParser):
 
         return self.weather_data
 
+    def update_weather_data(self, start_date, end_date):
+        """
+        Update weather data for a specific date range, starting from the day after the latest database entry
+        and ending on the specified end date.
+        """
+        print(f"Updating weather data from {start_date} to {end_date}...")
+
+        self.year = start_date.year
+        self.month = start_date.month
+
+        # Initialize an empty dictionary to store scraped data
+        new_weather_data = {}
+
+        while True:
+            current_date = datetime(self.year, self.month, 1).date()
+
+            # Stop if the current date exceeds the end_date
+            if current_date > end_date:
+                print("Reached the end date. Stopping update.")
+                break
+
+            print(f"Scraping data for {self.year}-{self.month:02d}...")
+            url = f"{self.base_url}&Year={self.year}&Month={self.month}"
+
+            for attempt in range(3):  # Retry mechanism
+                try:
+                    response = requests.get(url, timeout=10)
+                    response.raise_for_status()
+
+                    # Process the page content
+                    self.feed(response.text)
+
+                    # Add the scraped data for this month to `new_weather_data`
+                    for date, temps in self.weather_data.items():
+                        # Ensure the date is converted to datetime.date
+                        if isinstance(date, str):
+                            date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+                        elif isinstance(date, datetime):
+                            date_obj = date.date()
+                        else:
+                            date_obj = date  # Assume already datetime.date
+
+                        if start_date <= date_obj <= end_date:
+                            new_weather_data[date_obj] = temps
+                    break
+                except (requests.exceptions.Timeout, requests.exceptions.RequestException) as e:
+                    print(f"Attempt {attempt + 1} failed: {e}")
+                    time.sleep(5)
+
+            # Move to the next month
+            if self.month == 12:
+                self.month = 1
+                self.year += 1
+            else:
+                self.month += 1
+
+        print(f"Finished updating. {len(new_weather_data)} new records retrieved.")
+        return new_weather_data
+
+
+
 
 
 if __name__ == "__main__":
